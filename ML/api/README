@@ -1,0 +1,37 @@
+Зачем нужен API сервер
+
+# bot/main.py - КАК НЕ НАДО ДЕЛАТЬ
+class BotWithBuiltInML:
+    def __init__(self):
+        self.bot = TelegramBot()
+        self.ml_model = load_huge_model("5gb_model.pkl")  # 5 ГБ памяти!
+
+    async def check_email(self):
+        # Письмо пришло
+        email = get_email()
+
+        # Классифицируем (это занимает 2 секунды)
+        result = self.ml_model.predict(email)  # ⏳ БОТ ЗАВИС НА 2 СЕКУНДЫ!
+
+        # Отправляем уведомление
+        await self.bot.send_message(result)
+
+
+# bot/main.py - ПРАВИЛЬНЫЙ ПОДХОД
+class BotWithMLApi:
+    def __init__(self):
+        self.bot = TelegramBot()  # Лёгкий, 50 МБ памяти
+        # Модель НЕ загружаем!
+
+    async def check_email(self):
+        # Письмо пришло
+        email = get_email()
+
+        # Отправляем запрос в API (асинхронно, 0.1 секунды)
+        result = await self.http_client.post(
+            "http://ml-api:8000/classify",  # Отдельный сервер
+            json=email
+        )  # ⚡ Быстро, не блокирует бота!
+
+        # Отправляем уведомление
+        await self.bot.send_message(result)
