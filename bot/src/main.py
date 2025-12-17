@@ -1,7 +1,8 @@
 import asyncio
-import logging
+import threading
 import sys
 from os import getenv
+import logging
 
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
@@ -9,6 +10,8 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from bot.src.services.email_oauth import generate_oauth_url
+from utils.oauth_callback import app as flask_app
+from services.scheduler import monitor_emails
 
 TOKEN = "8204410947:AAHZuxncIITudP1OYSag3u5_CNbW_c3xgGE"
 
@@ -42,8 +45,8 @@ async def command_start_handler(message: Message) -> None:
     )
 
 
-@dp.message(Command('/help'))
-async def command_start_handler(message: Message) -> None:
+@dp.message(Command('help'))
+async def command_help_handler(message: Message) -> None:
     """
     This handler receives messages with `/help` command
     """
@@ -65,7 +68,7 @@ async def command_start_handler(message: Message) -> None:
         "Если возникли вопросы или проблемы, напиши 👉 @datingloki"
     )
 
-@dp.message(Command('/auth'))
+@dp.message(Command('auth'))
 async def connect_handler(message: Message):
     telegram_user_id = message.from_user.id
 
@@ -101,10 +104,15 @@ async def main() -> None:
     # Initialize Bot instance with default bot properties which will be passed to all API calls
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-    # And the run events dispatching
+    flask_thread = threading.Thread(target=flask_app.run, kwargs={'debug': False, 'use_reloader': False, 'port': 5000})
+    flask_thread.daemon = True
+    flask_thread.start()
+
+    asyncio.create_task(monitor_emails(bot))
+
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())

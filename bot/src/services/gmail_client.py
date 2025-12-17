@@ -1,4 +1,3 @@
-# services/gmail_service.py
 import os
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build

@@ -1,5 +1,4 @@
 # работа с Gmail API
-import os
 from google_auth_oauthlib.flow import Flow
 from config.oauth_config import SCOPES, CLIENT_SECRET_FILE, REDIRECT_URI, TOKENS_DIR
 
