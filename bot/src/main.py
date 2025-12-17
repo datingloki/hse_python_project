@@ -8,6 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
+from bot.src.services.email_oauth import generate_oauth_url
 
 TOKEN = "8204410947:AAHZuxncIITudP1OYSag3u5_CNbW_c3xgGE"
 
@@ -65,8 +66,18 @@ async def command_start_handler(message: Message) -> None:
     )
 
 @dp.message(Command('/auth'))
-async def command_start_handler(message: Message) -> None:
-    pass
+async def connect_handler(message: Message):
+    telegram_user_id = message.from_user.id
+
+    auth_url = generate_oauth_url(telegram_user_id)
+
+    await message.answer(
+        "🔐 <b>Подключение Gmail</b>\n\n"
+        "Чтобы подключить почту, перейди по ссылке ниже 👇\n"
+        "Авторизация происходит через Google и безопасна.\n\n"
+        f"👉 {auth_url}\n\n"
+        "После завершения авторизации я автоматически начну отслеживать письма.",
+    )
 
 @dp.message()
 async def echo_handler(message: Message) -> None: #ловим любые другие сообщения
@@ -81,6 +92,9 @@ async def echo_handler(message: Message) -> None: #ловим любые дру�
     except TypeError:
         # But not all the types is supported to be copied so need to handle it
         await message.answer("Nice try!")
+
+
+# ВСЕ КОМАНДЫ НУЖНО В /handlers потом запихнуть
 
 
 async def main() -> None:
