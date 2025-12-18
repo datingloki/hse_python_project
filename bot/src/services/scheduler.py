@@ -6,7 +6,7 @@ import html
 
 from googleapiclient.errors import HttpError
 from bot.src.services.gmail_client import get_gmail_service
-from config.oauth_config import TOKENS_DIR
+from bot.src.config.oauth_config import TOKENS_DIR
 
 async def monitor_emails(bot):
     while True:

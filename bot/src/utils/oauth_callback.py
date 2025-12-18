@@ -6,7 +6,7 @@ import json
 
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from config.oauth_config import SCOPES, CLIENT_SECRET_FILE, REDIRECT_URI, TOKENS_DIR
+from bot.src.config.oauth_config import SCOPES, CLIENT_SECRET_FILE, REDIRECT_URI, TOKENS_DIR
 
 app = Flask(__name__)
 

@@ -1,6 +1,6 @@
 # работа с Gmail API
 from google_auth_oauthlib.flow import Flow
-from config.oauth_config import SCOPES, CLIENT_SECRET_FILE, REDIRECT_URI, TOKENS_DIR
+from bot.src.config.oauth_config import SCOPES, CLIENT_SECRET_FILE, REDIRECT_URI, TOKENS_DIR
 
 
 def generate_oauth_url(telegram_user_id: int) -> str:
