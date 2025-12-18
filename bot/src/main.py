@@ -10,10 +10,10 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from bot.src.services.email_oauth import generate_oauth_url
-from utils.oauth_callback import app as flask_app
-from services.scheduler import monitor_emails
+from bot.src.utils.oauth_callback import app as flask_app
+from bot.src.services.scheduler import monitor_emails
+from bot.src.config.bot_token import TOKEN
 
-TOKEN = "8204410947:AAHZuxncIITudP1OYSag3u5_CNbW_c3xgGE"
 
 
 dp = Dispatcher()

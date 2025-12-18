@@ -1,0 +1,7 @@
+.venv/
+.idea/
+bot/src/config/
+
+bot/__pycache__/
+bot/src/__pycache__/
+bot/src/services/__pycache__/
