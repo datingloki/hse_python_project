@@ -11,7 +11,7 @@ from bot.src.domain.repositories.state_repository import StateRepository
 from bot.src.application.email_oauth import OAuthService
 from bot.src.application.gmail_client import GmailService
 from bot.src.application.email_monitor_service import EmailMonitorService
-from handlers.telegram_handlers import TelegramHandlers
+from bot.src.handlers.telegram_handlers import TelegramHandlers
 from bot.src.infrastructure.oauth_callback_app import OAuthCallbackApp
 
 

@@ -1,7 +1,7 @@
 from aiogram import Dispatcher, html
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
-from application.email_oauth import OAuthService
+from bot.src.application.email_oauth import OAuthService
 
 
 class TelegramHandlers:

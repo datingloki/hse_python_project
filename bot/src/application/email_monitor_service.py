@@ -93,7 +93,7 @@ from bot.src.domain.entities.user_state import UserState
 from bot.src.domain.entities.email_message_class import EmailMessage
 from bot.src.domain.repositories.token_repositories import TokenRepository
 from bot.src.domain.repositories.state_repository import StateRepository
-from application.gmail_client import GmailService
+from bot.src.application.gmail_client import GmailService
 
 
 class EmailMonitorService:
