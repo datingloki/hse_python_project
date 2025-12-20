@@ -25,4 +25,4 @@ class OAuthCallbackApp:
             return "✅ Gmail успешно подключён. Можешь вернуться в Telegram."
 
     def run(self, port: int = 5000, debug: bool = False):
-        self.app.run(port=port, debug=debug, use_reloader=False)
+        self.app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False)
