@@ -14,15 +14,31 @@ class OAuthCallbackApp:
         self._register_routes()
 
     def _register_routes(self):
-        @self.app.route("/oauth2callback")
+        @self.app.route("/oauth2callback", methods=["GET"])
         def oauth_callback():
+            code = request.args.get("code")
             state = request.args.get("state")
-            user_id = int(state)
-            service = self.gmail_service.get_service(user_id)
-            profile = self.gmail_service.get_profile(service)
-            user_state = UserState(user_id, self.state_repo.tokens_dir)
-            user_state.save_last_history_id(profile['historyId'])
-            return "✅ Gmail успешно подключён. Можешь вернуться в Telegram."
+            error = request.args.get("error")
+
+            if error:
+                return f"Ошибка авторизации: {error}", 400
+
+            if not code or not state:
+                return "Неверный запрос (нет code или state)", 400
+
+            try:
+                user_id = int(state)
+                self.oauth_service.fetch_and_save_token(code, state)
+
+                service = self.gmail_service.get_service(user_id)
+                if service:
+                    profile = self.gmail_service.get_profile(service)
+                    user_state = UserState(user_id, self.state_repo.tokens_dir)
+                    user_state.save_last_history_id(profile['historyId'])
+
+                return "✅ Gmail успешно подключён. Можешь вернуться в Telegram."
+            except Exception as e:
+                return f"Ошибка при сохранении токена: {str(e)}", 500
 
     def run(self, port: int = 5000, debug: bool = False):
         self.app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False)
