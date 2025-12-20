@@ -25,5 +25,5 @@ class OAuthCallbackApp:
             user_state.save_last_history_id(profile['historyId'])
             return "✅ Gmail успешно подключён. Можешь вернуться в Telegram."
 
-    def run(self, port: int = 5000, debug: bool = False):
+    def run(self, port: int = 8000, debug: bool = False):
         self.app.run(port=port, debug=debug, use_reloader=False)
