@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.bot
+    container_name: hse-gmail-bot
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/gmail_tokens
+    secrets:
+      - db_password
+
+  db:
+    image: postgres:15-alpine
+    container_name: gmail-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gmail_tokens
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    secrets:
+      - db_password
+
+volumes:
+  postgres_data:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
