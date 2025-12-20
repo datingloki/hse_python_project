@@ -31,11 +31,9 @@ class GmailService:
             return build("gmail", "v1", credentials=creds)
         return None
 
-    @staticmethod
     def get_profile(self, service: Resource) -> Dict:
         return service.users().getProfile(userId='me').execute()
 
-    @staticmethod
     def get_history(self, service: Resource, start_history_id: str) -> Dict:
         return service.users().history().list(
             userId='me',
@@ -43,7 +41,6 @@ class GmailService:
             historyTypes=['messageAdded']
         ).execute()
 
-    @staticmethod
     def get_message(self, service: Resource, msg_id: str) -> Dict:
         return service.users().messages().get(
             userId='me',
