@@ -1,0 +1,3 @@
+from bot.src.config.oauth_config import SCOPES, CLIENT_SECRET_FILE, REDIRECT_URI, TOKENS_DIR
+
+__all__ = ['SCOPES', 'CLIENT_SECRET_FILE', 'REDIRECT_URI', 'TOKENS_DIR']
