@@ -35,6 +35,8 @@ class BotApplication:
 
         self.monitor_task = asyncio.create_task(self.monitor_service.monitor_all_users())
 
+        await self.bot.delete_webhook(drop_pending_updates=True)
+
         await self.dp.start_polling(self.bot)
 
 
