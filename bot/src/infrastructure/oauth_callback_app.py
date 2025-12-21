@@ -171,4 +171,4 @@ class OAuthCallbackApp:
         )
 
         logger.info(f"Запуск OAuthCallbackApp на порту {port}")
-        self.app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False)
+        self.app.run(host='127.0.0.1', port=port, debug=debug, use_reloader=False)
