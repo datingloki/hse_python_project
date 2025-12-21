@@ -163,7 +163,7 @@ class OAuthCallbackApp:
                 "message": "Это debug endpoint"
             }, 200
 
-    def run(self, port: int = 9000, debug: bool = False):
+    def run(self, port: int = 8080, debug: bool = False):
         # Настраиваем логирование
         logging.basicConfig(
             level=logging.DEBUG if debug else logging.INFO,
