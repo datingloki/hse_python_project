@@ -29,8 +29,13 @@ class BotApplication:
         self.monitor_task = None
 
     async def start(self):
-        await asyncio.sleep(2)
+        flask_thread = threading.Thread(target=self.callback_app.run, kwargs={'debug': False})
+        flask_thread.daemon = True
+        flask_thread.start()
+
         self.monitor_task = asyncio.create_task(self.monitor_service.monitor_all_users())
+
+        await self.dp.start_polling(self.bot)
 
 
 if __name__ == "__main__":

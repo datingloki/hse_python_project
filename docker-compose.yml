@@ -12,7 +12,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/gmail_tokens
     ports:
-      - "8081:8081"
+      - "8083:8083"
 
   db:
     image: postgres:15-alpine
