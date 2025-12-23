@@ -61,24 +61,23 @@ class EmailMonitorService:
                     except:
                         formatted_date = date_str
 
-                    safe_from = html.escape(email.from_)
-                    safe_subject = html.escape(email.subject)
-                    safe_snippet = html.escape(email.snippet)
+                    notification = f"""
+                    📬 *НОВОЕ ПИСЬМО*
 
-                    notification = (
-                        "📬 <b>НОВОЕ ПИСЬМО</b>\n\n"
-                        f"👤 <b>От:</b> {safe_from}\n"
-                        f"📅 <b>Дата:</b> {formatted_date}\n"
-                        f"📌 <b>Тема:</b> {safe_subject}\n\n"
-                        f"📄 <b>Содержание:</b>\n"
-                        f"{safe_snippet}\n\n"
-                        "━━━━━━━━━━━━━━━━━━━━"
-                    )
+                    👤 *От:* {email.from_}
+                    📅 *Дата:* {formatted_date}
+                    📌 *Тема:* {email.subject}
+
+                    📄 *Содержание:*
+                    {email.snippet}
+
+                    ━━━━━━━━━━━━━━━━━━━━
+                    """
 
                     await self.bot.send_message(
                         user_id,
                         notification,
-                        parse_mode='HTML',
+                        parse_mode='Markdown',
                         disable_web_page_preview=True
                     )
 
