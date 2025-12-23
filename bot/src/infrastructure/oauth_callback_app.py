@@ -5,8 +5,6 @@ from bot.src.domain.entities.user_state import UserState
 from bot.src.domain.repositories.state_repository import StateRepository
 import logging
 import traceback
-import datetime
-from flask import make_response
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +74,7 @@ class OAuthCallbackApp:
                 user_state.save_last_history_id(profile['historyId'])
 
                 logger.info(f"Успешная аутентификация для user_id: {user_id}")
+
                 response = """
                 <!DOCTYPE html>
                 <html lang="ru">
@@ -347,7 +346,6 @@ class OAuthCallbackApp:
                 </body>
                 </html>
                 """
-
                 return response
 
             except Exception as e:
