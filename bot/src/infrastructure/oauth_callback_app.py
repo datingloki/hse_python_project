@@ -76,7 +76,7 @@ class OAuthCallbackApp:
                 user_state.save_last_history_id(profile['historyId'])
 
                 logger.info(f"Успешная аутентификация для user_id: {user_id}")
-                html_content = """
+                response = """
                 <!DOCTYPE html>
                 <html lang="ru">
                 <head>
@@ -348,11 +348,6 @@ class OAuthCallbackApp:
                 </html>
                 """
 
-                response = make_response(html_content)
-                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response.headers['Pragma'] = 'no-cache'
-                response.headers['Expires'] = '0'
-                response.headers['Last-Modified'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
                 return response
 
             except Exception as e:
