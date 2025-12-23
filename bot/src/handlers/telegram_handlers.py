@@ -5,6 +5,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.exceptions import TelegramBadRequest
 from bot.src.application.email_oauth import OAuthService
+import json
+import os
 
 
 class TelegramHandlers:
@@ -12,54 +14,66 @@ class TelegramHandlers:
         self.dp = dp
         self.oauth_service = oauth_service
         self.router = Router()
-        self._register_handlers()
-        self.user_categories = {}  # Хранит выбранные категории пользователей
+        self.data_file = "user_categories.json"
 
-        # Определяем категории с описаниями
+        self.user_categories = self._load_user_categories()
+
         self.categories = {
             "forum": {
                 "name": "Форумы",
                 "emoji": "🗣️",
                 "description": "Сообщения с форумов, обсуждения и уведомления от сообществ",
-                "count": "~2,000 писем"
             },
             "promotions": {
                 "name": "Реклама",
                 "emoji": "🛒",
                 "description": "Маркетинговые письма, акции, скидки и рекламные предложения",
-                "count": "~2,000 писем"
             },
             "social": {
                 "name": "Соцсети",
                 "emoji": "📱",
                 "description": "Уведомления из социальных сетей и платформ",
-                "count": "~2,000 писем"
-            },
-            "spam": {
-                "name": "Спам",
-                "emoji": "⚠️",
-                "description": "Нежелательная почта, спам и фишинговые письма",
-                "count": "~2,000 писем"
             },
             "updates": {
                 "name": "Обновления",
                 "emoji": "🔄",
                 "description": "Системные уведомления, обновления безопасности и технические сообщения",
-                "count": "~2,000 писем"
             },
             "verify": {
                 "name": "Коды верификации",
                 "emoji": "🔐",
                 "description": "Письма с кодами подтверждения, паролями и проверочными кодами",
-                "count": "~2,000 писем"
             }
         }
 
-        # Регистрируем роутер в диспетчере
+        self._register_handlers()
         self.dp.include_router(self.router)
 
+    def _load_user_categories(self):
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    result = {}
+                    for user_id_str, categories in data.items():
+                        result[int(user_id_str)] = set(categories)
+                    return result
+            except Exception:
+                return {}
+        return {}
+
+    def _save_user_categories(self):
+        try:
+            data_to_save = {}
+            for user_id, categories_set in self.user_categories.items():
+                data_to_save[str(user_id)] = list(categories_set)
+
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Ошибка при сохранении категорий: {e}")
+
     def _register_handlers(self):
-        """Регистрируем обработчики через роутер"""
         self.router.message.register(self.command_start_handler, CommandStart())
         self.router.message.register(self.command_help_handler, Command('help'))
         self.router.message.register(self.command_auth_handler, Command('auth'))
@@ -69,17 +83,13 @@ class TelegramHandlers:
         self.router.message.register(self.echo_handler)
 
     def inline_keyboard_categories(self, user_id: int = None) -> InlineKeyboardMarkup:
-        """Создает клавиатуру с категориями"""
         keyboard_builder = InlineKeyboardBuilder()
 
-        # Добавляем кнопки категорий
         for category_id, category_info in self.categories.items():
-            # Проверяем, выбрана ли категория пользователем
             is_selected = False
             if user_id and user_id in self.user_categories:
                 is_selected = category_id in self.user_categories[user_id]
 
-            # Добавляем эмодзи выбора
             status_emoji = "✅ " if is_selected else ""
             button_text = f"{status_emoji}{category_info['emoji']} {category_info['name']}"
 
@@ -88,17 +98,14 @@ class TelegramHandlers:
                 callback_data=f"category_{category_id}"
             )
 
-        # Добавляем кнопки управления
         keyboard_builder.button(text="📋 Мои фильтры", callback_data="show_my_filters")
         keyboard_builder.button(text="🔄 Сбросить все", callback_data="reset_all_categories")
         keyboard_builder.button(text="💾 Сохранить", callback_data="save_categories")
 
-        # Настраиваем разметку (по 2 кнопки в ряду для категорий, затем управление)
         keyboard_builder.adjust(2, 2, 2, 3)
         return keyboard_builder.as_markup()
 
     def inline_keyboard_category_detail(self, category_id: str, is_selected: bool = False) -> InlineKeyboardMarkup:
-        """Создает клавиатуру для детального просмотра категории"""
         keyboard_builder = InlineKeyboardBuilder()
 
         if is_selected:
@@ -176,7 +183,6 @@ class TelegramHandlers:
     async def command_filter_handler(self, message: Message):
         user_id = message.from_user.id
 
-        # Инициализируем список категорий для пользователя, если его еще нет
         if user_id not in self.user_categories:
             self.user_categories[user_id] = set()
 
@@ -213,7 +219,6 @@ class TelegramHandlers:
             )
 
     async def callback_query_handler(self, callback_query: CallbackQuery):
-        """Маршрутизатор callback запросов"""
         data = callback_query.data
 
         try:
@@ -244,7 +249,6 @@ class TelegramHandlers:
             await callback_query.answer(f"Произошла ошибка: {str(e)}")
 
     async def _handle_category_detail(self, callback_query: CallbackQuery):
-        """Показывает детальную информацию о категории"""
         category_id = callback_query.data.replace("category_", "")
         category = self.categories.get(category_id)
 
@@ -254,7 +258,6 @@ class TelegramHandlers:
 
         user_id = callback_query.from_user.id
 
-        # Инициализируем список категорий для пользователя, если его еще нет
         if user_id not in self.user_categories:
             self.user_categories[user_id] = set()
 
@@ -264,7 +267,6 @@ class TelegramHandlers:
 
         await callback_query.message.edit_text(
             f"{category['emoji']} <b>{category['name']}</b>\n\n"
-            f"📊 <b>Статистика:</b> {category['count']}\n"
             f"📝 <b>Описание:</b> {category['description']}\n\n"
             f"<b>Статус:</b> {status}\n\n"
             f"<i>Нажмите кнопку ниже, чтобы {'отключить' if is_selected else 'включить'} эту категорию</i>",
@@ -272,7 +274,6 @@ class TelegramHandlers:
         )
 
     async def _handle_toggle_category(self, callback_query: CallbackQuery):
-        """Включает/выключает категорию"""
         category_id = callback_query.data.replace("toggle_", "")
 
         if category_id not in self.categories:
@@ -281,11 +282,9 @@ class TelegramHandlers:
 
         user_id = callback_query.from_user.id
 
-        # Инициализируем множество для пользователя, если его еще нет
         if user_id not in self.user_categories:
             self.user_categories[user_id] = set()
 
-        # Включаем/выключаем категорию
         if category_id in self.user_categories[user_id]:
             self.user_categories[user_id].remove(category_id)
             action = "отключена"
@@ -296,13 +295,13 @@ class TelegramHandlers:
         category = self.categories[category_id]
         await callback_query.answer(f"Категория «{category['name']}» {action}")
 
-        # Обновляем сообщение
+        self._save_user_categories()
+
         is_selected = category_id in self.user_categories[user_id]
         status = "✅ <b>Включена</b>" if is_selected else "❌ <b>Выключена</b>"
 
         await callback_query.message.edit_text(
             f"{category['emoji']} <b>{category['name']}</b>\n\n"
-            f"📊 <b>Статистика:</b> {category['count']}\n"
             f"📝 <b>Описание:</b> {category['description']}\n\n"
             f"<b>Статус:</b> {status}\n\n"
             f"<i>Нажмите кнопку ниже, чтобы {'отключить' if is_selected else 'включить'} эту категорию</i>",
@@ -310,7 +309,6 @@ class TelegramHandlers:
         )
 
     async def _show_my_filters(self, callback_query: CallbackQuery):
-        """Показывает выбранные пользователем категории"""
         user_id = callback_query.from_user.id
 
         if user_id not in self.user_categories or not self.user_categories[user_id]:
@@ -335,10 +333,8 @@ class TelegramHandlers:
             )
 
     async def _show_categories_list(self, callback_query: CallbackQuery):
-        """Показывает список всех категорий"""
         user_id = callback_query.from_user.id
 
-        # Инициализируем список категорий для пользователя, если его еще нет
         if user_id not in self.user_categories:
             self.user_categories[user_id] = set()
 
@@ -353,7 +349,6 @@ class TelegramHandlers:
         )
 
     async def _reset_all_categories(self, callback_query: CallbackQuery):
-        """Сбрасывает все выбранные категории"""
         user_id = callback_query.from_user.id
 
         if user_id in self.user_categories:
@@ -363,15 +358,15 @@ class TelegramHandlers:
         else:
             await callback_query.answer("Нет выбранных категорий для сброса")
 
+        self._save_user_categories()
+
         await self._show_categories_list(callback_query)
 
     async def _save_categories(self, callback_query: CallbackQuery):
-        """Сохраняет выбранные категории"""
         user_id = callback_query.from_user.id
         selected_count = len(self.user_categories.get(user_id, set()))
 
-        # Здесь должна быть логика сохранения в базу данных
-        # Временно просто показываем сообщение
+        self._save_user_categories()
 
         await callback_query.answer(f"Сохранено {selected_count} категорий")
 
@@ -386,7 +381,6 @@ class TelegramHandlers:
         )
 
     async def _handle_unknown_callback(self, callback_query: CallbackQuery):
-        """Обработка неизвестного callback"""
         await callback_query.answer("Неизвестная команда")
         await callback_query.message.answer(
             "❌ <b>Неизвестная команда</b>\n\n"
