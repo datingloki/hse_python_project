@@ -12,27 +12,76 @@ class TelegramHandlers:
         self.dp = dp
         self.oauth_service = oauth_service
         self._register_handlers()
-        self.keyboard = self.inline_keyboard_construction()
+        self.user_categories = {}  # Хранит выбранные категории пользователей
+
+        self.categories = {
+            "forum": {
+                "name": "Форумы",
+                "emoji": "🗣️",
+                "description": "Сообщения с форумов, обсуждения и уведомления от сообществ",
+            },
+            "promotions": {
+                "name": "Реклама",
+                "emoji": "🛒",
+                "description": "Маркетинговые письма, акции, скидки и рекламные предложения",
+            },
+            "social": {
+                "name": "Соцсети",
+                "emoji": "📱",
+                "description": "Уведомления из социальных сетей и платформ",
+            },
+            "updates": {
+                "name": "Обновления",
+                "emoji": "🔄",
+                "description": "Системные уведомления, обновления безопасности и технические сообщения",
+            },
+            "verify": {
+                "name": "Коды верификации",
+                "emoji": "🔐",
+                "description": "Письма с кодами подтверждения, паролями и проверочными кодами",
+            }
+        }
 
     def _register_handlers(self):
         self.dp.message(CommandStart())(self.command_start_handler)
         self.dp.message(Command('help'))(self.command_help_handler)
         self.dp.message(Command('auth'))(self.command_auth_handler)
         self.dp.message(Command('filters'))(self.command_filter_handler)
+        self.dp.message(Command('my_filters'))(self.command_my_filters_handler)
         self.dp.callback_query()(self.callback_query_handler)
         self.dp.message()(self.echo_handler)
 
-    @staticmethod
-    def inline_keyboard_construction() -> InlineKeyboardMarkup:
+    def inline_keyboard_categories(self) -> InlineKeyboardMarkup:
+        """Создает клавиатуру с категориями"""
         keyboard_builder = InlineKeyboardBuilder()
-        keyboard_builder.button(text="Фильтр 1", callback_data="filter1")
-        keyboard_builder.button(text="Фильтр 2", callback_data="filter2")
-        keyboard_builder.button(text="Дополнительные настройки", callback_data="advanced_settings")
-        keyboard_builder.button(text="Сбросить все фильтры", callback_data="reset_filters")
-        keyboard = keyboard_builder.as_markup(row_width=2)
-        return keyboard
 
-    async def command_start_handler(self, message: Message):  # Убрать @staticmethod
+        for category_id, category_info in self.categories.items():
+            button_text = f"{category_info['emoji']} {category_info['name']}"
+            keyboard_builder.button(text=button_text, callback_data=f"category_{category_id}")
+
+        keyboard_builder.button(text="✅ Мои фильтры", callback_data="show_my_filters")
+        keyboard_builder.button(text="🔄 Сбросить все", callback_data="reset_all_categories")
+        keyboard_builder.button(text="💾 Сохранить настройки", callback_data="save_categories")
+
+        keyboard_builder.adjust(2, 2, 2, 3)
+        return keyboard_builder.as_markup()
+
+    def inline_keyboard_category_detail(self, category_id: str, is_selected: bool = False) -> InlineKeyboardMarkup:
+        """Создает клавиатуру для детального просмотра категории"""
+        keyboard_builder = InlineKeyboardBuilder()
+
+        if is_selected:
+            keyboard_builder.button(text="❌ Отключить", callback_data=f"toggle_{category_id}")
+        else:
+            keyboard_builder.button(text="✅ Включить", callback_data=f"toggle_{category_id}")
+
+        keyboard_builder.button(text="⬅️ Назад к списку", callback_data="back_to_categories")
+        keyboard_builder.button(text="✅ Мои фильтры", callback_data="show_my_filters")
+
+        keyboard_builder.adjust(1, 2)
+        return keyboard_builder.as_markup()
+
+    async def command_start_handler(self, message: Message):
         await message.answer(
             f"👋 <b>Привет, {html.bold(message.from_user.full_name)}!</b>\n\n"
             f"Я — бот для уведомлений о важных письмах из твоей почты 📬\n"
@@ -40,10 +89,7 @@ class TelegramHandlers:
             f"только о действительно важных событиях.\n\n"
             f"<b>Что я умею:</b>\n"
             f"• 🔐 Подключать почту через безопасную авторизацию Gmail\n"
-            f"• ⚙️ Настраивать фильтры важности:\n"
-            f"  — по ключевым словам\n"
-            f"  — по отправителю\n"
-            f"  — по теме письма\n"
+            f"• ⚙️ Настраивать фильтры по категориям писем\n"
             f"• 🚨 Присылать мгновенные уведомления о важных письмах\n"
             f"• ✂️ Показывать краткую выжимку письма\n\n"
             f"<b>С чего начать:</b>\n"
@@ -53,7 +99,7 @@ class TelegramHandlers:
             f"Если понадобится помощь — напиши /help 😊"
         )
 
-    async def command_help_handler(self, message: Message):  # Убрать @staticmethod
+    async def command_help_handler(self, message: Message):
         await message.answer(
             "<b>ℹ️ Помощь</b>\n\n"
             "Я — бот для уведомлений о важных письмах из Gmail 📬\n"
@@ -61,20 +107,21 @@ class TelegramHandlers:
             "<b>Доступные команды:</b>\n"
             "/start — начать работу с ботом\n"
             "/auth — подключить Gmail-почту\n"
-            "/filters — настроить фильтры важности писем\n"
+            "/filters — настроить фильтры по категориям\n"
+            "/my_filters — показать выбранные категории\n"
             "/help — показать это сообщение\n\n"
             "<b>Как это работает:</b>\n"
             "1️⃣ Ты подключаешь почту Gmail\n"
-            "2️⃣ Настраиваешь правила (ключевые слова, отправители, темы)\n"
+            "2️⃣ Выбираешь категории писем, о которых хочешь получать уведомления\n"
             "3️⃣ Я автоматически проверяю новые письма\n"
-            "4️⃣ Если письмо важно — присылаю уведомление ✨\n\n"
+            "4️⃣ Если письмо попадает в выбранные категории — присылаю уведомление ✨\n\n"
             "<b>Поддержка:</b>\n"
             "Если возникли вопросы или проблемы, напиши 👉 @datingloki"
         )
 
     async def command_auth_handler(self, message: Message):
         user_id = message.from_user.id
-        auth_url = self.oauth_service.generate_auth_url(user_id)  # Убрать self
+        auth_url = self.oauth_service.generate_auth_url(user_id)
         await message.answer(
             "🔐 <b>Подключение Gmail</b>\n\n"
             "Чтобы подключить почту, перейди по ссылке ниже 👇\n"
@@ -84,11 +131,39 @@ class TelegramHandlers:
         )
 
     async def command_filter_handler(self, message: Message):
+        user_id = message.from_user.id
+
+        if user_id not in self.user_categories:
+            self.user_categories[user_id] = set()
+
         await message.answer(
-            "<b>Настройка фильтров</b>\n\n"
-            "Выберите желаемые фильтры на клавиатуре под этим сообщением",
-            reply_markup=self.keyboard
+            "<b>🎯 Настройка фильтров по категориям</b>\n\n"
+            "Выберите категории писем, о которых хотите получать уведомления:\n\n"
+            "<i>Каждая категория содержит описание и примерное количество писем в ней</i>",
+            reply_markup=self.inline_keyboard_categories()
         )
+
+    async def command_my_filters_handler(self, message: Message):
+        user_id = message.from_user.id
+
+        if user_id not in self.user_categories or not self.user_categories[user_id]:
+            await message.answer(
+                "📭 <b>У вас пока нет выбранных категорий</b>\n\n"
+                "Используйте команду /filters, чтобы выбрать категории писем для уведомлений."
+            )
+        else:
+            selected_categories = []
+            for category_id in self.user_categories[user_id]:
+                category = self.categories.get(category_id, {})
+                selected_categories.append(
+                    f"{category.get('emoji', '📧')} {category.get('name', 'Неизвестная категория')}"
+                )
+
+            await message.answer(
+                f"✅ <b>Ваши выбранные категории ({len(selected_categories)}):</b>\n\n"
+                + "\n".join(selected_categories) + "\n\n"
+                                                   "Изменить выбор можно командой /filters"
+            )
 
     async def callback_query_handler(self, callback_query: CallbackQuery):
         """Маршрутизатор callback запросов"""
@@ -97,249 +172,166 @@ class TelegramHandlers:
         try:
             await callback_query.answer()
 
-            if data.startswith("filter"):
-                await self._handle_filter_callback(callback_query)
-            elif data.startswith("configure"):
-                await self._handle_configure_callback(callback_query)
-            elif data.startswith("save"):
-                await self._handle_save_callback(callback_query)
-            elif data == "back_to_filters":
-                await self._show_filters_menu(callback_query.message)
+            if data.startswith("category_"):
+                await self._handle_category_detail(callback_query)
+            elif data.startswith("toggle_"):
+                await self._handle_toggle_category(callback_query)
+            elif data == "show_my_filters":
+                await self._show_my_filters(callback_query)
+            elif data == "back_to_categories":
+                await self._show_categories_list(callback_query)
+            elif data == "reset_all_categories":
+                await self._reset_all_categories(callback_query)
+            elif data == "save_categories":
+                await self._save_categories(callback_query)
             else:
                 await self._handle_unknown_callback(callback_query)
+
         except TelegramBadRequest as e:
             if "message is not modified" in str(e):
-                # Игнорируем ошибку, если сообщение не изменилось
                 pass
             else:
                 raise
 
-    async def _handle_filter_callback(self, callback_query: CallbackQuery):
-        """Обработка выбора фильтра"""
-        data = callback_query.data
+    async def _handle_category_detail(self, callback_query: CallbackQuery):
+        """Показывает детальную информацию о категории"""
+        category_id = callback_query.data.replace("category_", "")
+        category = self.categories.get(category_id)
 
-        if data == "filter1":
-            await self._show_filter1_configuration(callback_query)
-        elif data == "filter2":
-            await self._show_filter2_configuration(callback_query)
+        if not category:
+            await callback_query.answer("Категория не найдена")
+            return
+
+        user_id = callback_query.from_user.id
+        is_selected = category_id in self.user_categories.get(user_id, set())
+
+        status = "✅ <b>Включена</b>" if is_selected else "❌ <b>Выключена</b>"
+
+        await callback_query.message.edit_text(
+            f"{category['emoji']} <b>{category['name']}</b>\n\n"
+            f"📊 <b>Статистика:</b> {category['count']}\n"
+            f"📝 <b>Описание:</b> {category['description']}\n\n"
+            f"<b>Статус:</b> {status}\n\n"
+            f"<i>Нажмите кнопку ниже, чтобы {'отключить' if is_selected else 'включить'} эту категорию</i>",
+            reply_markup=self.inline_keyboard_category_detail(category_id, is_selected)
+        )
+
+    async def _handle_toggle_category(self, callback_query: CallbackQuery):
+        """Включает/выключает категорию"""
+        category_id = callback_query.data.replace("toggle_", "")
+
+        if category_id not in self.categories:
+            await callback_query.answer("Категория не найдена")
+            return
+
+        user_id = callback_query.from_user.id
+
+        if user_id not in self.user_categories:
+            self.user_categories[user_id] = set()
+
+        if category_id in self.user_categories[user_id]:
+            self.user_categories[user_id].remove(category_id)
+            action = "отключена"
         else:
-            await callback_query.answer(f"Фильтр {data} не найден")
+            self.user_categories[user_id].add(category_id)
+            action = "включена"
 
-    async def _show_filter1_configuration(self, callback_query: CallbackQuery):
-        """Показать настройки для фильтра 1"""
-        await callback_query.message.edit_text(
-            "🔧 <b>Настройка Фильтра 1</b>\n\n"
-            "📌 <b>Текущие настройки:</b>\n"
-            "• Ключевые слова: важное, срочно, ASAP\n"
-            "• Приоритет: высокий\n"
-            "• Отправители: все\n\n"
-            "Выберите действие:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Изменить ключевые слова",
-                                         callback_data="configure_keywords_filter1"),
-                    InlineKeyboardButton(text="Изменить приоритет",
-                                         callback_data="configure_priority_filter1")
-                ],
-                [
-                    InlineKeyboardButton(text="Сохранить", callback_data="save_filter1"),
-                    InlineKeyboardButton(text="Назад к фильтрам",
-                                         callback_data="back_to_filters")
-                ]
-            ])
-        )
+        category = self.categories[category_id]
+        await callback_query.answer(f"Категория «{category['name']}» {action}")
 
-    async def _show_filter2_configuration(self, callback_query: CallbackQuery):
-        """Показать настройки для фильтра 2"""
-        await callback_query.message.edit_text(
-            "🔧 <b>Настройка Фильтра 2</b>\n\n"
-            "📌 <b>Текущие настройки:</b>\n"
-            "• Ключевые слова: отчет, итоги, результаты\n"
-            "• Приоритет: средний\n"
-            "• Отправители: выбранные\n\n"
-            "Выберите действие:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Изменить ключевые слова",
-                                         callback_data="configure_keywords_filter2"),
-                    InlineKeyboardButton(text="Выбрать отправителей",
-                                         callback_data="configure_senders_filter2")
-                ],
-                [
-                    InlineKeyboardButton(text="Сохранить", callback_data="save_filter2"),
-                    InlineKeyboardButton(text="Назад к фильтрам",
-                                         callback_data="back_to_filters")
-                ]
-            ])
-        )
-
-    async def _handle_configure_callback(self, callback_query: CallbackQuery):
-        """Обработка настроек фильтров"""
-        data = callback_query.data
-
-        if "keywords" in data:
-            filter_num = data.replace("configure_keywords_filter", "")
-            await self._configure_keywords(callback_query, filter_num)
-        elif "priority" in data:
-            filter_num = data.replace("configure_priority_filter", "")
-            await self._configure_priority(callback_query, filter_num)
-        elif "senders" in data:
-            filter_num = data.replace("configure_senders_filter", "")
-            await self._configure_senders(callback_query, filter_num)
-        else:
-            await callback_query.answer("Неизвестная команда настройки")
-
-    async def _configure_keywords(self, callback_query: CallbackQuery, filter_num: str):
-        """Настройка ключевых слов"""
-        await callback_query.message.edit_text(
-            f"✏️ <b>Настройка ключевых слов для фильтра {filter_num}</b>\n\n"
-            "Введите ключевые слова через запятую:\n"
-            "<i>Пример: важное, срочно, ASAP, отчет</i>",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Отмена", callback_data=f"filter{filter_num}")]
-            ])
-        )
-        # Здесь можно сохранить состояние для ожидания ввода пользователя
-        # Например, используя FSM (Finite State Machine)
-
-    async def _configure_priority(self, callback_query: CallbackQuery, filter_num: str):
-        """Настройка приоритета"""
-        await callback_query.message.edit_text(
-            f"⚡ <b>Настройка приоритета для фильтра {filter_num}</b>\n\n"
-            "Выберите уровень приоритета:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Высокий",
-                                         callback_data=f"set_priority_high_filter{filter_num}"),
-                    InlineKeyboardButton(text="Средний",
-                                         callback_data=f"set_priority_medium_filter{filter_num}")
-                ],
-                [
-                    InlineKeyboardButton(text="Низкий",
-                                         callback_data=f"set_priority_low_filter{filter_num}"),
-                    InlineKeyboardButton(text="Отмена",
-                                         callback_data=f"filter{filter_num}")
-                ]
-            ])
-        )
-
-    async def _configure_senders(self, callback_query: CallbackQuery, filter_num: str):
-        """Настройка отправителей"""
-        await callback_query.message.edit_text(
-            f"👤 <b>Настройка отправителей для фильтра {filter_num}</b>\n\n"
-            "Выберите отправителей для фильтра:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Все отправители",
-                                         callback_data=f"set_senders_all_filter{filter_num}"),
-                    InlineKeyboardButton(text="Выбранные",
-                                         callback_data=f"set_senders_selected_filter{filter_num}")
-                ],
-                [
-                    InlineKeyboardButton(text="Добавить отправителя",
-                                         callback_data=f"add_sender_filter{filter_num}"),
-                    InlineKeyboardButton(text="Отмена",
-                                         callback_data=f"filter{filter_num}")
-                ]
-            ])
-        )
-
-    async def _handle_save_callback(self, callback_query: CallbackQuery):
-        """Обработка сохранения настроек"""
-        data = callback_query.data
-
-        if data == "save_filter1":
-            # Здесь логика сохранения настроек фильтра 1
-            # Например, в базу данных
-            await self._save_filter_settings(callback_query, 1)
-        elif data == "save_filter2":
-            await self._save_filter_settings(callback_query, 2)
-        elif data.startswith("set_priority_"):
-            # Обработка установки приоритета
-            filter_num = data.split("_")[-1].replace("filter", "")
-            priority = data.split("_")[2]  # high, medium, low
-            await self._save_priority_setting(callback_query, filter_num, priority)
-        elif data.startswith("set_senders_"):
-            # Обработка установки отправителей
-            filter_num = data.split("_")[-1].replace("filter", "")
-            senders_type = data.split("_")[2]  # all, selected
-            await self._save_senders_setting(callback_query, filter_num, senders_type)
-
-    async def _save_filter_settings(self, callback_query: CallbackQuery, filter_num: int):
-        """Сохранить настройки фильтра"""
-        # Реальная логика сохранения в БД
-        # filter_settings = get_filter_settings_from_message(callback_query.message)
-        # save_to_database(callback_query.from_user.id, filter_num, filter_settings)
+        is_selected = category_id in self.user_categories[user_id]
+        status = "✅ <b>Включена</b>" if is_selected else "❌ <b>Выключена</b>"
 
         await callback_query.message.edit_text(
-            f"✅ <b>Фильтр {filter_num} успешно сохранен!</b>\n\n"
-            "Настройки применены и будут использоваться для фильтрации писем.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Вернуться к фильтрам",
-                                      callback_data="back_to_filters")]
-            ])
+            f"{category['emoji']} <b>{category['name']}</b>\n\n"
+            f"📊 <b>Статистика:</b> {category['count']}\n"
+            f"📝 <b>Описание:</b> {category['description']}\n\n"
+            f"<b>Статус:</b> {status}\n\n"
+            f"<i>Нажмите кнопку ниже, чтобы {'отключить' if is_selected else 'включить'} эту категорию</i>",
+            reply_markup=self.inline_keyboard_category_detail(category_id, is_selected)
         )
 
-    async def _save_priority_setting(self, callback_query: CallbackQuery, filter_num: str, priority: str):
-        """Сохранить настройку приоритета"""
-        priority_names = {
-            "high": "высокий",
-            "medium": "средний",
-            "low": "низкий"
-        }
+    async def _show_my_filters(self, callback_query: CallbackQuery):
+        """Показывает выбранные пользователем категории"""
+        user_id = callback_query.from_user.id
 
-        await callback_query.answer(f"Приоритет установлен: {priority_names.get(priority, priority)}")
-        # Возвращаемся к настройкам фильтра
-        if filter_num == "1":
-            await self._show_filter1_configuration(callback_query)
-        else:
-            await self._show_filter2_configuration(callback_query)
-
-    async def _save_senders_setting(self, callback_query: CallbackQuery, filter_num: str, senders_type: str):
-        """Сохранить настройку отправителей"""
-        senders_names = {
-            "all": "все отправители",
-            "selected": "выбранные отправители"
-        }
-
-        await callback_query.answer(f"Тип отправителей: {senders_names.get(senders_type, senders_type)}")
-        # Возвращаемся к настройкам фильтра
-        if filter_num == "1":
-            await self._show_filter1_configuration(callback_query)
-        else:
-            await self._show_filter2_configuration(callback_query)
-
-    async def _show_filters_menu(self, message: Message):
-        """Показать меню фильтров"""
-        try:
-            await message.edit_text(
-                "<b>Настройка фильтров</b>\n\n"
-                "Выберите желаемые фильтры на клавиатуре под этим сообщением",
-                reply_markup=self.keyboard
+        if user_id not in self.user_categories or not self.user_categories[user_id]:
+            await callback_query.message.edit_text(
+                "📭 <b>У вас пока нет выбранных категорий</b>\n\n"
+                "Выберите категории, нажав кнопки ниже:",
+                reply_markup=self.inline_keyboard_categories()
             )
-        except TelegramBadRequest:
-            # Если сообщение нельзя отредактировать (например, отправлено другим ботом),
-            # отправляем новое сообщение
-            await message.answer(
-                "<b>Настройка фильтров</b>\n\n"
-                "Выберите желаемые фильтры на клавиатуре под этим сообщением",
-                reply_markup=self.keyboard
+        else:
+            selected_categories = []
+            for category_id in self.user_categories[user_id]:
+                category = self.categories.get(category_id, {})
+                selected_categories.append(
+                    f"{category.get('emoji', '📧')} {category.get('name', 'Неизвестная категория')}"
+                )
+
+            await callback_query.message.edit_text(
+                f"✅ <b>Ваши выбранные категории ({len(selected_categories)}):</b>\n\n"
+                + "\n".join(selected_categories) + "\n\n"
+                                                   "Изменить выбор можно кнопками ниже:",
+                reply_markup=self.inline_keyboard_categories()
             )
+
+    async def _show_categories_list(self, callback_query: CallbackQuery):
+        """Показывает список всех категорий"""
+        user_id = callback_query.from_user.id
+        selected_count = len(self.user_categories.get(user_id, set()))
+
+        await callback_query.message.edit_text(
+            f"<b>🎯 Настройка фильтров по категориям</b>\n\n"
+            f"✅ <b>Выбрано: {selected_count} из {len(self.categories)}</b>\n\n"
+            "Выберите категории писем, о которых хотите получать уведомления:\n\n"
+            "<i>Каждая категория содержит описание и примерное количество писем в ней</i>",
+            reply_markup=self.inline_keyboard_categories()
+        )
+
+    async def _reset_all_categories(self, callback_query: CallbackQuery):
+        """Сбрасывает все выбранные категории"""
+        user_id = callback_query.from_user.id
+
+        if user_id in self.user_categories:
+            count = len(self.user_categories[user_id])
+            self.user_categories[user_id] = set()
+            await callback_query.answer(f"Сброшено {count} категорий")
+        else:
+            await callback_query.answer("Нет выбранных категорий для сброса")
+
+        await self._show_categories_list(callback_query)
+
+    async def _save_categories(self, callback_query: CallbackQuery):
+        """Сохраняет выбранные категории"""
+        user_id = callback_query.from_user.id
+        selected_count = len(self.user_categories.get(user_id, set()))
+
+        # Здесь должна быть логика сохранения в базу данных
+        # Временно просто показываем сообщение
+
+        await callback_query.answer(f"Сохранено {selected_count} категорий")
+
+        await callback_query.message.edit_text(
+            f"💾 <b>Настройки сохранены!</b>\n\n"
+            f"✅ <b>Выбрано категорий:</b> {selected_count}\n\n"
+            "Я буду присылать уведомления только о письмах из выбранных категорий.\n\n"
+            "Изменить настройки можно в любое время через /filters",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="⬅️ Назад к фильтрам", callback_data="back_to_categories")]
+            ])
+        )
 
     async def _handle_unknown_callback(self, callback_query: CallbackQuery):
         """Обработка неизвестного callback"""
         await callback_query.answer("Неизвестная команда")
         await callback_query.message.answer(
             "❌ <b>Неизвестная команда</b>\n\n"
-            "Пожалуйста, используйте команды из меню бота или начните заново с /start",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Вернуться к фильтрам",
-                                      callback_data="back_to_filters")]
-            ])
+            "Пожалуйста, используйте команды из меню бота или начните заново с /start"
         )
 
     @staticmethod
-    async def echo_handler(message: Message):  # Убрать self из параметров
+    async def echo_handler(message: Message):
         try:
             await message.send_copy(chat_id=message.chat.id)
         except TypeError:
