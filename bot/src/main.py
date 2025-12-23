@@ -13,9 +13,6 @@ from bot.src.application.gmail_client import GmailService
 from bot.src.application.email_monitor_service import EmailMonitorService
 from bot.src.handlers.telegram_handlers import TelegramHandlers
 from bot.src.infrastructure.oauth_callback_app import OAuthCallbackApp
-from ML.classifier.predictor import EmailClassifier
-
-classifier = EmailClassifier(model_dir='~/hse_python_project/ML/models')
 
 
 class BotApplication:
@@ -27,8 +24,7 @@ class BotApplication:
         self.dp = Dispatcher()
         self.bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
         self.handlers = TelegramHandlers(self.dp, self.oauth_service)
-        self.monitor_service = EmailMonitorService(
-            self.bot, self.token_repo, self.state_repo, self.gmail_service, classifier)
+        self.monitor_service = EmailMonitorService(self.bot, self.token_repo, self.state_repo, self.gmail_service)
         self.callback_app = OAuthCallbackApp(self.oauth_service, self.gmail_service, self.state_repo)
         self.monitor_task = None
 
