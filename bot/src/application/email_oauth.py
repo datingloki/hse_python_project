@@ -8,7 +8,6 @@ class OAuthService:
     def __init__(self, token_repo: TokenRepository):
         self.token_repo = token_repo
 
-
     def generate_auth_url(self, user_id: int) -> str:
         flow = Flow.from_client_secrets_file(
             CLIENT_SECRET_FILE,
