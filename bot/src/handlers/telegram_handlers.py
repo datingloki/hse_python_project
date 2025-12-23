@@ -12,7 +12,7 @@ class TelegramHandlers:
         self.dp = dp
         self.oauth_service = oauth_service
         self._register_handlers()
-        self.user_categories = {}  # Хранит выбранные категории пользователей
+        self.user_categories = {}
 
         self.categories = {
             "forum": {
@@ -29,6 +29,11 @@ class TelegramHandlers:
                 "name": "Соцсети",
                 "emoji": "📱",
                 "description": "Уведомления из социальных сетей и платформ",
+            },
+            "spam": {
+                "name": "Спам",
+                "emoji": "⚠️",
+                "description": "Нежелательная почта, спам и фишинговые письма",
             },
             "updates": {
                 "name": "Обновления",
@@ -57,7 +62,10 @@ class TelegramHandlers:
 
         for category_id, category_info in self.categories.items():
             button_text = f"{category_info['emoji']} {category_info['name']}"
-            keyboard_builder.button(text=button_text, callback_data=f"category_{category_id}")
+            keyboard_builder.button(
+                text=button_text,
+                callback_data=f"category_{category_id}"
+            )
 
         keyboard_builder.button(text="✅ Мои фильтры", callback_data="show_my_filters")
         keyboard_builder.button(text="🔄 Сбросить все", callback_data="reset_all_categories")
@@ -71,12 +79,24 @@ class TelegramHandlers:
         keyboard_builder = InlineKeyboardBuilder()
 
         if is_selected:
-            keyboard_builder.button(text="❌ Отключить", callback_data=f"toggle_{category_id}")
+            keyboard_builder.button(
+                text="❌ Отключить",
+                callback_data=f"toggle_{category_id}"
+            )
         else:
-            keyboard_builder.button(text="✅ Включить", callback_data=f"toggle_{category_id}")
+            keyboard_builder.button(
+                text="✅ Включить",
+                callback_data=f"toggle_{category_id}"
+            )
 
-        keyboard_builder.button(text="⬅️ Назад к списку", callback_data="back_to_categories")
-        keyboard_builder.button(text="✅ Мои фильтры", callback_data="show_my_filters")
+        keyboard_builder.button(
+            text="⬅️ Назад к списку",
+            callback_data="back_to_categories"
+        )
+        keyboard_builder.button(
+            text="✅ Мои фильтры",
+            callback_data="show_my_filters"
+        )
 
         keyboard_builder.adjust(1, 2)
         return keyboard_builder.as_markup()
@@ -136,10 +156,13 @@ class TelegramHandlers:
         if user_id not in self.user_categories:
             self.user_categories[user_id] = set()
 
+        selected_count = len(self.user_categories.get(user_id, set()))
+
         await message.answer(
-            "<b>🎯 Настройка фильтров по категориям</b>\n\n"
-            "Выберите категории писем, о которых хотите получать уведомления:\n\n"
-            "<i>Каждая категория содержит описание и примерное количество писем в ней</i>",
+            f"<b>🎯 Настройка фильтров по категориям</b>\n\n"
+            f"✅ <b>Выбрано: {selected_count} из {len(self.categories)}</b>\n\n"
+            "Выберите категорию, чтобы увидеть подробности и настроить:\n\n"
+            "<i>Нажмите на любую категорию ниже для просмотра подробностей и включения/выключения</i>",
             reply_markup=self.inline_keyboard_categories()
         )
 
@@ -284,8 +307,8 @@ class TelegramHandlers:
         await callback_query.message.edit_text(
             f"<b>🎯 Настройка фильтров по категориям</b>\n\n"
             f"✅ <b>Выбрано: {selected_count} из {len(self.categories)}</b>\n\n"
-            "Выберите категории писем, о которых хотите получать уведомления:\n\n"
-            "<i>Каждая категория содержит описание и примерное количество писем в ней</i>",
+            "Выберите категорию, чтобы увидеть подробности и настроить:\n\n"
+            "<i>Нажмите на любую категорию ниже для просмотра подробностей и включения/выключения</i>",
             reply_markup=self.inline_keyboard_categories()
         )
 
