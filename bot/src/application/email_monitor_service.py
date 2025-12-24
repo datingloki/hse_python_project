@@ -16,7 +16,7 @@ from bot.src.domain.entities.email_message_class import EmailMessage
 from bot.src.domain.repositories.token_repositories import TokenRepository
 from bot.src.domain.repositories.state_repository import StateRepository
 from bot.src.application.gmail_client import GmailService
-USER_CATEGORIES_PATH = "bot/src/handlers/user_categories.json"
+USER_CATEGORIES_PATH = str(Path(__file__).resolve().parents[3] / "user_categories.json")
 
 
 def _find_predictor_path() -> Path | None:

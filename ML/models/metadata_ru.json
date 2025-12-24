@@ -1,0 +1,16 @@
+{
+  "model_name": "Linear SVM",
+  "accuracy": 0.9807193177604746,
+  "train_samples": 10780,
+  "test_samples": 2697,
+  "features": 3000,
+  "categories": [
+    "forum",
+    "promotions",
+    "social_media",
+    "spam",
+    "updates",
+    "verify_code"
+  ],
+  "created_at": "2025-12-24T11:09:05.852203"
+}
