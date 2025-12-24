@@ -108,3 +108,7 @@
 - **Протокол**: HTTPS (HTTP over TLS) для всех запросов.
 - **Почему API?**: Позволяет эффективно мониторить изменения (используется polling каждые 60 сек).
 - Преимущества: Безопасно, не требует хранения пароля.
+
+
+
+![попугай](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgMxh9YVZXGbBctf9RS_gZwBFtyBLOAyR9Ug&s)
