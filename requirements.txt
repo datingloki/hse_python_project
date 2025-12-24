@@ -14,3 +14,13 @@ joblib
 pandas
 nltk
 scikit-learn
+
+pytest-asyncio>=0.24.2
+pytest-mock==3.14.0
+httpretty==1.1.4
+freezegun==1.5.1
+factory-boy==3.3.0
+faker==24.11.0
+asynctest==0.13.0
+aioresponses==0.7.6
+pytest-cov
