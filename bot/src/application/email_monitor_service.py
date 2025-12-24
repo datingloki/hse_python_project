@@ -16,7 +16,7 @@ from bot.src.domain.entities.email_message_class import EmailMessage
 from bot.src.domain.repositories.token_repositories import TokenRepository
 from bot.src.domain.repositories.state_repository import StateRepository
 from bot.src.application.gmail_client import GmailService
-USER_CATEGORIES_PATH = "bot/src/handlers/user_categories.json"
+USER_CATEGORIES_PATH = str(Path(__file__).resolve().parents[3] / "user_categories.json")
 
 
 def _find_predictor_path() -> Path | None:
@@ -185,69 +185,50 @@ class EmailMonitorService:
                     if not text_for_classification:
                         text_for_classification = (email.subject or "") + "\n" + (email.snippet or "")
 
+                    # вызываем классификатор (он теперь возвращает только 'category')
                     category = None
-                    confidence = None
-                    top_probs_str = None
                     if self.classifier:
                         try:
-                            result = self.classifier.predict(text_for_classification)
-                            category = result.get('category')
-                            confidence = result.get('confidence')
-                            probs = result.get('probabilities', {})
-
-                            sorted_probs = sorted(probs.items(), key=lambda x: -x[1])[:3]
-                            top_probs_str = ", ".join([f"{k}: {v * 100:.1f}%" for k, v in sorted_probs])
-
+                            cls_result = self.classifier.predict(text_for_classification)
+                            category = cls_result.get('category')
                         except Exception as e:
                             logging.getLogger(__name__).error(f"Ошибка классификации письма {msg['id']}: {e}")
                             category = None
+                    else:
+                        logging.getLogger(__name__).info("Классификатор не загружен — пропускаем")
+                        continue  # если хотите пропускать без классификатора
 
-                    user_categories_map = self._load_user_categories_file()
-
-                    if self.classifier is None:
-                        logging.getLogger(__name__).info("Классификатор не загружен — пропускаем отправку уведомления")
-                        continue
-
-
+                    # если категория не определена — пропускаем
                     if not category:
                         logging.getLogger(__name__).info(f"Письмо {msg['id']} пропущено: категория не определена")
                         continue
 
+                    # загружаем выборы пользователя
+                    user_categories_map = self._load_user_categories_file()
                     selected_for_user = user_categories_map.get(user_id, set())
+
                     if not selected_for_user:
                         logging.getLogger(__name__).info(
                             f"Письмо {msg['id']} пропущено для пользователя {user_id}: нет выбранных категорий")
                         continue
 
+                    # если категория не выбрана пользователем — пропускаем
                     if category not in selected_for_user:
                         logging.getLogger(__name__).info(
                             f"Письмо {msg['id']} пропущено: категория '{category}' не выбрана пользователем {user_id}"
                         )
                         continue
 
-                    notification_lines = [
-                        "📬 *НОВОЕ ПИСЬМО*",
-                        "",
-                        f"👤 *От:* {email.from_}",
-                        f"📅 *Дата:* {formatted_date}",
-                        f"📌 *Тема:* {email.subject}",
-                        ""
-                    ]
-
-                    if category is not None:
-                        notification_lines.append(f"📂 *Категория:* {category} ({(confidence * 100):.1f}%)")
-                        if top_probs_str:
-                            notification_lines.append(f"🔢 *Вероятности:* {top_probs_str}")
-                        notification_lines.append("")
-
-                    notification_lines.extend([
-                        "📄 *Содержание:*",
-                        f"{email.snippet}",
-                        "",
+                    # формируем уведомление и отправляем (без вероятностей)
+                    notification = (
+                        f"📬 *НОВОЕ ПИСЬМО*\n\n"
+                        f"👤 *От:* {email.from_}\n"
+                        f"📅 *Дата:* {formatted_date}\n"
+                        f"📌 *Тема:* {email.subject}\n"
+                        f"📂 *Категория:* {category}\n\n"
+                        f"📄 *Содержание:*\n{email.snippet}\n\n"
                         "━━━━━━━━━━━━━━━━━━━━"
-                    ])
-
-                    notification = "\n".join(notification_lines)
+                    )
 
                     await self.bot.send_message(
                         user_id,
