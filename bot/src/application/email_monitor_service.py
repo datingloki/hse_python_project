@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import sys
 import importlib
 import importlib.util
@@ -22,13 +21,11 @@ USER_CATEGORIES_PATH = str(Path(__file__).resolve().parents[3] / "user_categorie
 def _find_predictor_path() -> Path | None:
     """Ищет файл predictor.py в родительских директориях и в ~/hse_python_project."""
     cur = Path(__file__).resolve()
-    # подняться до 6 уровней вверх и проверить наличие ML/classifier/predictor.py
     for _ in range(7):
         candidate = cur.parent / "ML" / "classifier" / "predictor.py"
         if candidate.exists():
             return candidate
         cur = cur.parent
-    # проверить домашнюю папку как fallback
     home_candidate = Path.home() / "hse_python_project" / "ML" / "classifier" / "predictor.py"
     if home_candidate.exists():
         return home_candidate
@@ -44,17 +41,14 @@ def _import_email_classifier():
         )
         return None, None
 
-    # попробуем добавить корень проекта (папку, содержащую ML) в sys.path
-    ml_root = predictor_path.parents[1]  # .../ML
-    project_root = ml_root.parent        # одна папка выше ML
+    ml_root = predictor_path.parents[1]
+    project_root = ml_root.parent
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
     try:
-        # сначала пробуем обычный импорт по пакету ML.classifier.predictor
         module = importlib.import_module("ML.classifier.predictor")
     except Exception:
-        # fallback: импортировать напрямую по пути
         try:
             spec = importlib.util.spec_from_file_location("predictor_from_path", str(predictor_path))
             module = importlib.util.module_from_spec(spec)
@@ -63,13 +57,11 @@ def _import_email_classifier():
             logging.getLogger(__name__).error(f"Не удалось импортировать predictor.py: {e}")
             return None, None
 
-    # получить класс EmailClassifier из модуля
     EmailClassifier = getattr(module, "EmailClassifier", None)
     if EmailClassifier is None:
         logging.getLogger(__name__).error("В predictor.py не найден класс EmailClassifier")
         return None, None
 
-    # определить model_dir ( ML/models рядом с predictor.py или fallback в ~/hse_python_project/ML/models )
     candidate_models_dir = ml_root / "models"
     if candidate_models_dir.exists():
         model_dir = str(candidate_models_dir)
@@ -79,7 +71,6 @@ def _import_email_classifier():
 
     return EmailClassifier, model_dir
 
-# вызов импорта (сразу при загрузке модуля)
 _EMAIL_CLASSIFIER_CLS, _EMAIL_CLASSIFIER_MODEL_DIR = _import_email_classifier()
 if _EMAIL_CLASSIFIER_CLS is None:
     logging.getLogger(__name__).warning("EmailClassifier не импортирован — классификация будет отключена.")
@@ -93,15 +84,12 @@ class EmailMonitorService:
         self.token_repo = token_repo
         self.state_repo = state_repo
         self.gmail_service = gmail_service
-        # Попытка загрузить классификатор (если он доступен)
         self.classifier = None
         if _EMAIL_CLASSIFIER_CLS is not None:
             try:
                 if _EMAIL_CLASSIFIER_MODEL_DIR:
-                    # передаём model_dir явно (если найден)
                     self.classifier = _EMAIL_CLASSIFIER_CLS(model_dir=_EMAIL_CLASSIFIER_MODEL_DIR)
                 else:
-                    # иначе полагаемся на поведение конструктора по умолчанию
                     self.classifier = _EMAIL_CLASSIFIER_CLS()
             except FileNotFoundError as e:
                 logging.getLogger(__name__).error(f"Файлы модели не найдены: {e}")
@@ -125,7 +113,6 @@ class EmailMonitorService:
                 try:
                     result[int(user_id_str)] = set(categories)
                 except Exception:
-                    # если ключ не число — игнорируем
                     continue
             return result
         except Exception as e:
@@ -173,9 +160,7 @@ class EmailMonitorService:
                     except Exception:
                         formatted_date = date_str
 
-                    # подготовка текста для классификации
                     text_for_classification = None
-                    # пробуем несколько полей, которые могут содержать текст письма
                     for attr in ("full_text", "body", "plain_text", "snippet"):
                         if hasattr(email, attr):
                             value = getattr(email, attr)
@@ -185,7 +170,6 @@ class EmailMonitorService:
                     if not text_for_classification:
                         text_for_classification = (email.subject or "") + "\n" + (email.snippet or "")
 
-                    # вызываем классификатор (он теперь возвращает только 'category')
                     category = None
                     if self.classifier:
                         try:
@@ -196,14 +180,12 @@ class EmailMonitorService:
                             category = None
                     else:
                         logging.getLogger(__name__).info("Классификатор не загружен — пропускаем")
-                        continue  # если хотите пропускать без классификатора
+                        continue
 
-                    # если категория не определена — пропускаем
                     if not category:
                         logging.getLogger(__name__).info(f"Письмо {msg['id']} пропущено: категория не определена")
                         continue
 
-                    # загружаем выборы пользователя
                     user_categories_map = self._load_user_categories_file()
                     selected_for_user = user_categories_map.get(user_id, set())
 
@@ -212,14 +194,12 @@ class EmailMonitorService:
                             f"Письмо {msg['id']} пропущено для пользователя {user_id}: нет выбранных категорий")
                         continue
 
-                    # если категория не выбрана пользователем — пропускаем
                     if category not in selected_for_user:
                         logging.getLogger(__name__).info(
                             f"Письмо {msg['id']} пропущено: категория '{category}' не выбрана пользователем {user_id}"
                         )
                         continue
 
-                    # формируем уведомление и отправляем (без вероятностей)
                     notification = (
                         f"📬 *НОВОЕ ПИСЬМО*\n\n"
                         f"👤 *От:* {email.from_}\n"

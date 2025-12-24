@@ -44,10 +44,8 @@ class EmailClassifier:
 
         features = self.vectorizer.transform([clean_text])
 
-        # просто предсказываем метку
         prediction = self.model.predict(features)[0]
 
-        # стараемся привести метку к человеку-читаемому виду через label_encoder
         try:
             category = self.label_encoder.inverse_transform([prediction])[0]
         except Exception:
