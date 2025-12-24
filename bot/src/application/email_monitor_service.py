@@ -18,7 +18,7 @@ from bot.src.domain.repositories.state_repository import StateRepository
 from bot.src.application.gmail_client import GmailService
 USER_CATEGORIES_PATH = "bot/src/handlers/user_categories.json"
 
-# --- Надёжный импорт EmailClassifier с поиском пути к ML ---
+
 def _find_predictor_path() -> Path | None:
     """Ищет файл predictor.py в родительских директориях и в ~/hse_python_project."""
     cur = Path(__file__).resolve()
@@ -33,6 +33,7 @@ def _find_predictor_path() -> Path | None:
     if home_candidate.exists():
         return home_candidate
     return None
+
 
 def _import_email_classifier():
     predictor_path = _find_predictor_path()
