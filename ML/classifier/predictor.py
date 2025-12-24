@@ -36,23 +36,27 @@ class EmailClassifier:
         logging.getLogger(__name__).warning(f"✅ Модели загружены. Доступные категории: {list(self.label_encoder.classes_)}")
 
     def predict(self, email_text):
+        """
+        Простая предсказательная функция: возвращает только категорию.
+        Не использует predict_proba / decision_function.
+        """
         clean_text = clean_email_text(email_text)
 
         features = self.vectorizer.transform([clean_text])
 
+        # просто предсказываем метку
         prediction = self.model.predict(features)[0]
-        probabilities = self.model.predict_proba(features)[0]
 
-        category = self.label_encoder.inverse_transform([prediction])[0]
-
-        prob_dict = {}
-        for i, cat in enumerate(self.label_encoder.classes_):
-            prob_dict[cat] = float(probabilities[i])
+        # стараемся привести метку к человеку-читаемому виду через label_encoder
+        try:
+            category = self.label_encoder.inverse_transform([prediction])[0]
+        except Exception:
+            category = prediction
 
         return {
             'category': category,
-            'confidence': float(probabilities[prediction]),
-            'probabilities': prob_dict,
+            'confidence': None,
+            'probabilities': {},
             'clean_text': clean_text[:100] + "..." if len(clean_text) > 100 else clean_text
         }
 
