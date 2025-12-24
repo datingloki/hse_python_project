@@ -50,8 +50,7 @@ class TestOAuthCallbackApp:
             
             mock_profile = {'historyId': '123'}
             mock_service.users().getProfile().execute.return_value = mock_profile
-            
-            # Вызываем callback
+
             response = client.get('/oauth2callback?code=auth_code&state=123')
             
             assert response.status_code == 200

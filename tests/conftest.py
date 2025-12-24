@@ -6,16 +6,13 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch
 
-# Добавляем корень проекта в sys.path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Мокаем внешние зависимости
 sys.modules['pandas'] = MagicMock()
 sys.modules['nltk'] = MagicMock()
 sys.modules['joblib'] = MagicMock()
 
-# Мокаем nltk более детально
 if 'nltk' in sys.modules:
     sys.modules['nltk'].download = Mock()
     sys.modules['nltk'].corpus = MagicMock()
