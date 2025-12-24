@@ -2,6 +2,7 @@ from ML.classifier.preprocessor import clean_email_text
 import joblib
 import pickle
 import os
+import logging
 
 
 class EmailClassifier:
@@ -13,7 +14,7 @@ class EmailClassifier:
 
         model_dir = os.path.expanduser(model_dir)
 
-        print(f"🔄 Загружаю модели из: {model_dir}")
+        logging.getLogger(__name__).warning(f"🔄 Загружаю модели из: {model_dir}")
 
         model_path = os.path.join(model_dir, "model.pkl")
         vectorizer_path = os.path.join(model_dir, "vectorizer.pkl")
@@ -32,7 +33,7 @@ class EmailClassifier:
         with open(label_encoder_path, 'rb') as f:
             self.label_encoder = pickle.load(f)
 
-        print(f"✅ Модели загружены. Доступные категории: {list(self.label_encoder.classes_)}")
+        logging.getLogger(__name__).warning(f"✅ Модели загружены. Доступные категории: {list(self.label_encoder.classes_)}")
 
     def predict(self, email_text):
         clean_text = clean_email_text(email_text)
