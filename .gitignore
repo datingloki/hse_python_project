@@ -9,3 +9,12 @@ bot/__pycache__/
 bot/src/__pycache__/
 bot/src/services/__pycache__/
 bot/src/client_secret.json
+
+/bot/src/application/__pycache__/
+/bot/src/domain/__pycache__/
+/bot/src/domain/entities/__pycache__/
+/bot/src/domain/repositories/__pycache__/
+/bot/src/handlers/__pycache__/
+/bot/src/infrastructure/__pycache__/
+/ML/__pycache__/
+/ML/classifier/__pycache__/
